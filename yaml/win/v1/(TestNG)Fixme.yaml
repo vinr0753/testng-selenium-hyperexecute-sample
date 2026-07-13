@@ -28,4 +28,19 @@ testRunnerCommand: mvn test `-Dplatname=win `-Dmaven.repo.local=./.m2 dependency
 retryOnFailure: true
 maxRetries: 1
 
+post:
+  # grep: search the real HyperExecute CLI job log
+  - echo "--- grep: FAIL/ERROR lines from hyperexecute-cli.log ---"
+  - grep -iE 'FAIL|ERROR' hyperexecute-cli.log
+
+  # searches deploy_status.txt, space-delimited sample file
+  - echo "--- awk: extract column 2 from deploy_status.txt ---"
+  - awk '{print $2}' test-data/deploy_status.txt
+
+  - echo "--- sed: replace staging with production in deploy_status.txt ---"
+  - sed 's/staging/production/g' test-data/deploy_status.txt
+
+  - echo "--- piped chain: grep FAIL lines, then awk extracts service name ---"
+  - grep 'FAIL' test-data/deploy_status.txt | awk '{print $1}'
+
 jobLabel: [selenium-testng, win, v1, autosplit]
