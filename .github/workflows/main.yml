@@ -42,17 +42,35 @@ jobs:
           echo "Step 4: Executing the test"
           ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config "yaml/win/v1/(TestNG)Fixme.yaml"
 
-      - name: Find HyperExecute log files
+      - name: Task 4 - Parse HyperExecute job log
         if: always()
         shell: bash
         working-directory: testng-selenium-hyperexecute-sample
         run: |
-          echo "Files modified in the last 10 minutes:"
-          find . -type f -mmin -10 2>/dev/null
+          LOGFILE=hyperexecute-cli.log
+          echo "Using log file: $LOGFILE"
           echo ""
-          echo "Any .log files anywhere in the workspace:"
-          find . -iname "*.log" 2>/dev/null
+
+          echo "--- grep: lines containing FAIL or ERROR ---"
+          grep -iE 'FAIL|ERROR' "$LOGFILE" || echo "No FAIL/ERROR lines found"
           echo ""
-          echo "Contents of common artifact folders, if they exist:"
-          ls -la HyperExecuteResults 2>/dev/null || echo "no HyperExecuteResults folder"
-          ls -la logs 2>/dev/null || echo "no logs folder"
+
+          echo "--- awk: second space-delimited column of each line ---"
+          awk '{print $2}' "$LOGFILE" | head -20
+          echo ""
+
+          echo "--- sed: find-and-replace demo (staging -> production) ---"
+          echo "Build environment: staging, target: staging-cluster" > staging_demo.txt
+          cat staging_demo.txt
+          sed 's/staging/production/g' staging_demo.txt
+          echo ""
+
+          echo "--- piped chain: grep ERROR lines, then awk extracts a field ---"
+          grep -i 'ERROR' "$LOGFILE" | awk '{print $2}' || echo "No ERROR lines found"
+
+      - name: Upload HyperExecute log as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperexecute-cli-log
+          path: testng-selenium-hyperexecute-sample/hyperexecute-cli.log
