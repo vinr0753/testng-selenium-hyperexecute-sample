@@ -42,3 +42,14 @@ jobs:
           echo $LT_ACCESS_KEY
           echo "Step 4: Executing the test"
           ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config "yaml/win/v1/(TestNG)Fixme.yaml"
+          - name: Find HyperExecute log files
+          echo "Files modified in the last 10 minutes:"
+          find . -type f -mmin -10 2>/dev/null
+          echo ""
+          echo "Any .log files anywhere in the workspace:"
+          find . -iname "*.log" 2>/dev/null
+          echo ""
+          echo "Contents of common artifact folders, if they exist:"
+          ls -la HyperExecuteResults 2>/dev/null || echo "no HyperExecuteResults folder"
+          ls -la logs 2>/dev/null || echo "no logs folder"
+  
