@@ -1,121 +1,242 @@
-# Run Selenium Tests with TestNG on HyperExecute by TestMu AI (Formerly LambdaTest)
+# HyperExecute Assignment — Notes
 
-<p align="center">
-  <a href="https://www.testmuai.com/"><img src="https://img.shields.io/badge/MADE%20BY%20TestMu%20AI-000000.svg?style=for-the-badge&labelColor=000" alt="Made by TestMu AI"></a>
-  <a href="https://search.maven.org/artifact/org.testng/testng"><img src="https://img.shields.io/maven-central/v/org.testng/testng.svg?style=for-the-badge&labelColor=000000" alt="TestNG version"></a>
-  <a href="https://community.testmuai.com/"><img src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&labelColor=000000" alt="Community"></a>
-</p>
+Repo: `vinr0753/testng-selenium-hyperexecute-sample`
+Fixed YAML: [`yaml/win/v1/(TestNG)Fixme.yaml`](./yaml/win/v1/(TestNG)Fixme.yaml)
+Workflow: [`.github/workflows/main.yml`](./.github/workflows/main.yml)
 
-## Getting Started
+---
 
-[TestMu AI](https://www.testmuai.com/) (Formerly LambdaTest) is the world's first full-stack AI Agentic Quality Engineering platform that empowers teams to test intelligently, smarter, and ship faster. Built for scale, it offers a full-stack testing cloud with 10K+ real devices and 3,000+ browsers. With AI-native test management, MCP servers, and agent-based automation, TestMu AI supports Selenium, Appium, Playwright, and all major frameworks. 
+## Task 1: Fix the broken YAML
 
-With TestMu AI (Formerly LambdaTest), you can run Java TestNG Selenium tests at scale using HyperExecute smart test orchestration. This sample shows how to configure Java + TestNG with HyperExecute to run on the TestMu AI cloud.
+The original YAML failed for more than one reason — issues surfaced in stages as each was
+fixed and the job was re-run.
 
-- [Sign up on TestMu AI](https://www.testmuai.com/register/) (Formerly LambdaTest).
-- Follow the [TestMu AI Documentation](https://www.testmuai.com/support/docs/) for the full setup walkthrough.
+### Issues found and why they broke the job
 
-### Prerequisites
+- **`env: TOKEN: anvdegtod-asdaasda0asda-asda`** — invalid YAML. A nested key can't sit on
+  the same line as its parent. This threw a hard parse error
+  (`mapping values are not allowed here`) before the job could even start.
+  **Fix:** moved `TOKEN` onto its own indented line under `env:`.
 
-- Java JDK 11 or higher, Maven (latest stable). Download the HyperExecute CLI from https://downloads.lambdatest.com/hyperexecute/
-- A TestMu AI (Formerly LambdaTest) account with your username and access key
+- **`retryOnFailure: true` had a stray leading space** — every other top-level key sits at
+  column 0; this one had one space of indent. **Fix:** removed the leading space.
 
-### Setup
+- **`conCurrency: 1`** (typo'd casing) — HyperExecute's schema expects `concurrency`
+  (lowercase). Because the key didn't match, it was silently ignored, and since
+  `autosplit: true` requires `concurrency` to be defined, the job failed validation with
+  `Invalid yaml content: Concurrency is required in autosplit mode`.
+  **Fix:** corrected to `concurrency: 1`.
 
-Clone and install dependencies:
+- **`(TestNG)Fixme.yaml` config path had literal parentheses**, and the workflow step
+  referenced it *unquoted* in the `--config` flag:
+  ```bash
+  --config yaml/win/v1/(TestNG)Fixme.yaml
+  ```
+  In bash, `(` opens a subshell — unquoted, this is a shell metacharacter, not just a
+  filename character, and threw `syntax error near unexpected token '('`.
+  **Fix:** quoted the path: `--config "yaml/win/v1/(TestNG)Fixme.yaml"`.
 
-```bash
-git clone https://github.com/LambdaTest/testng-selenium-hyperexecute-sample && cd testng-selenium-hyperexecute-sample
-mvn -Dmaven.test.skip=true clean install
-```
+- **JDK mismatch** — `pom.xml` sets `maven.compiler.target: 11`, but the machine actually
+  compiling had JDK 8 installed (`openjdk version "1.8.0_442"`), giving
+  `Fatal error compiling: invalid target release: 11`.
+  **Fix:** added a `runtime:` block to the YAML so HyperExecute provisions JDK 11 on its
+  own VM for the test-execution stage:
+  ```yaml
+  runtime:
+    language: java
+    version: 11
+  ```
 
-Set your credentials as environment variables.
+### Evidence
+- Job link: `https://hyperexecute.lambdatest.com/hyperexecute/task?jobId=<job-id>`
+- ![Job running successfully on the dashboard](./images/task1-dashboard.png)
 
-**macOS / Linux:**
+---
 
-```bash
-export LT_USERNAME="YOUR_USERNAME"
-export LT_ACCESS_KEY="YOUR_ACCESS_KEY"
-export LT_TUNNEL="YOUR_TUNNEL_NAME"
-```
+## Task 2: Environment variables
 
-**Windows:**
-
-```bash
-set LT_USERNAME="YOUR_USERNAME"
-set LT_ACCESS_KEY="YOUR_ACCESS_KEY"
-set LT_TUNNEL="YOUR_TUNNEL_NAME"
-```
-
-### Run tests
-
-On Windows:
-
-```bash
-./hyperexecute --config yaml/win/testng_hyperexecute_autosplit_sample.yaml --force-clean-artifacts --download-artifacts
-```
-
-On Linux:
-
-```bash
-./hyperexecute --config yaml/linux/testng_hyperexecute_autosplit_sample.yaml --force-clean-artifacts --download-artifacts
-```
-
-View results on your TestMu AI dashboard.
-
-### Local testing with TestMu AI Tunnel
-
-To test locally hosted apps, set up the TestMu AI tunnel. OS-specific guides:
-
-- [Local Testing on Windows](https://www.testmuai.com/support/docs/local-testing-for-windows/)
-- [Local Testing on macOS](https://www.testmuai.com/support/docs/local-testing-for-macos/)
-- [Local Testing on Linux](https://www.testmuai.com/support/docs/local-testing-for-linux/)
-
-Add the following to your capabilities:
-
+### YAML
 ```yaml
-tunnel: true
+env:
+  TOKEN: anvdegtod-asdaasda0asda-asda
+  ENVIRONMENT: staging
+pre:
+  - mvn -Dmaven.repo.local=./.m2 dependency:resolve
+  - echo TOKEN=%TOKEN%
+  - echo ENVIRONMENT=%ENVIRONMENT%
 ```
 
-## Contributions
+**Note on shell syntax:** `pre` on this Windows runner executes under `cmd.exe`, not bash —
+confirmed by testing. `$TOKEN` (bash-style) silently resolved to nothing; `%TOKEN%`
+(`cmd.exe`-style) worked correctly and printed the real value.
 
-Contributions are welcome. Open an issue to discuss your idea before submitting a pull request. When reporting bugs, include your Java version, OS, and TestNG version.
+### Reading the variable in test code
+`src/test/java/Test1.java`:
+```java
+public static String token = System.getenv("TOKEN");
+public static String environment = System.getenv("ENVIRONMENT");
+```
+Printed inside `@BeforeMethod`:
+```java
+System.out.println("TOKEN=" + token);
+System.out.println("ENVIRONMENT=" + environment);
+```
 
-## TestMu AI (Formerly LambdaTest) Community
+### Evidence
+- `pre` step log output:
+  ```
+  TOKEN=anvdegtod-asdaasda0asda-asda
+  ENVIRONMENT=staging
+  ```
+- Test execution console output:
+  ```
+  TOKEN=anvdegtod-asdaasda0asda-asda
+  ENVIRONMENT=staging
+  ```
+- ![Env values printed in pre step and test output](./images/task2-env-output.png)
 
-Connect with testers and developers in the [TestMu AI Community](https://community.testmuai.com/). Ask questions, share what you are building, and discuss best practices in test automation and DevOps.
-  
-## TestMu AI (Formerly LambdaTest) Certifications
+---
 
-Earn free [TestMu AI Certifications](https://www.testmuai.com/certifications/) for testers, developers, and QA engineers. Validate your skills in Selenium, Cypress, Playwright, Appium, Espresso and more. Industry-recognized, shareable on LinkedIn, and built by practitioners, not marketers.
+## Task 3: Force a failure and configure retries
 
-## Learning Resources by TestMu AI (Formerly LambdaTest)
+### The intentional failure
+`src/test/java/Test1.java`, inside `test1_element_addition_1`, using the test's own
+already-computed values so the failure reads as a genuine check rather than an arbitrary
+`1 == 2`:
 
-Learn modern testing through tutorials, guides, videos, and weekly updates:
+```java
+// Intentional hard failure for retryOnFailure testing.
+// Uses the test's own real computed values but forces a mismatch,
+// so the failure is deterministic on every run.
+Assert.assertEquals(actualText, expectedText + " (forced mismatch)",
+        "Intentional failure for retry testing: expected [" + expectedText
+                + " (forced mismatch)] but got [" + actualText + "]");
+```
 
-* [TestMu AI Blog](https://www.testmuai.com/blog/)
-* [TestMu AI Learning Hub](https://www.testmuai.com/learning-hub/)
-* [TestMu AI on YouTube](https://www.youtube.com/@TestMuAI)
-* [TestMu AI Newsletter](https://www.testmuai.com/newsletter/)
-  
-## LambdaTest is Now TestMu AI
+### YAML
+```yaml
+retryOnFailure: true
+maxRetries: 1
+```
 
-On **January 12, 2026**, [LambdaTest evolved to TestMu AI](https://www.testmuai.com/lambdatest-is-now-testmuai/), the world's first fully autonomous **Agentic AI Quality Engineering Platform**.
+### Evidence
+Job log shows the test failing, then retrying, then failing again on the retry (this
+particular assertion is designed to always fail, so the *retry firing* is the thing being
+verified — not the test ultimately passing):
 
-Same team. Same infrastructure. Same customer accounts. All existing LambdaTest logins, scripts, capabilities, and integrations continue to work without change.
+```
+x [1]  "Test_1" (1m17s)
+x [1]  {retry 1} "Test_1" (58s)
+✔ [1]  "Test_2" (42s)
+✔ [1]  "Test_3" (51s)
+✔ [1]  "Test_4" (35s)
+```
 
-👉 Find the new home for [LambdaTest](https://www.testmuai.com).
+`{retry 1}` confirms `retryOnFailure` triggered exactly as configured. The overall job
+status shows `FAILED` because this test is designed to always fail — that's expected and
+intentional for this task, not a regression elsewhere in the suite.
 
-### How LambdaTest Evolved into TestMu AI
+- ![Retry evidence from job log](./images/task3-retry.png)
 
-In 2017, we launched LambdaTest with a simple mission: make testing fast, reliable, and accessible. As LambdaTest grew, we expanded into Test Intelligence, Visual Regression Testing, Accessibility Testing, API Testing, and Performance Testing, covering the full depth of the testing lifecycle.
+---
 
-As software development entered the AI era, testing had to evolve, too. We rebuilt the architecture to be AI-native from the ground up, with autonomous agents that **plan, author, execute, analyze, and optimize tests** while keeping humans in the loop. The platform integrates with your repos, CI, IDEs, and terminals, continuously learning from every code change and development signal.
+## Task 4: Linux/Unix basics
 
-That evolution earned a new name: **TestMu AI**, built for an AI-first future of quality engineering. TestMu is not a new name for us. It is the name of our annual community conference, which has brought together 100,000+ quality engineers to discuss how AI would reshape testing, long before that became an industry norm. 
+Two inputs used deliberately:
+- **`hyperexecute-cli.log`** — the real HyperExecute CLI log from the Task 1 job run, for `grep`
+- **`test-data/deploy_status.txt`** — a purpose-built, clean space-delimited sample file,
+  for `awk`/`sed`/the pipe chain (see note below on why)
 
-What started as a high-performance cloud testing platform has transformed into an AI-native, multi-agent system powering a connected, end-to-end quality layer. That evolution defined a new identity: LambdaTest evolved into TestMu AI, built for an AI-first future of quality engineering.
+### 1. grep — find FAIL/ERROR lines in the real job log
+```bash
+grep -iE 'FAIL|ERROR' hyperexecute-cli.log
+```
+*What it does:* `-E` enables extended regex so `|` means "or"; `-i` makes it case-insensitive.
+Prints every line containing `FAIL` or `ERROR`.
 
-## Support
+Sample output (from the actual job log):
+```
+{"level":"info","time":"...","msg":"\n FAILED \n"}
+{"level":"info","time":"...","msg":"    Failed test stage percentage:         25.00%"}
+{"level":"error","time":"...","msg":"Exiting with error: Failed tasks found."}
+```
 
-Got a question? Email [support@testmuai.com](mailto:support@testmuai.com) or chat with us 24x7 from our chat portal.
+### 2. awk — extract column 2
+`test-data/deploy_status.txt`:
+```
+app-gateway staging PASS
+auth-service staging FAIL
+payment-service production PASS
+user-service staging PASS
+notification-service production FAIL
+search-service staging PASS
+inventory-service production PASS
+reporting-service staging FAIL
+```
+
+```bash
+awk '{print $2}' test-data/deploy_status.txt
+```
+*What it does:* splits each line on whitespace and prints the second field — here, the
+deployment environment for each service.
+
+Output:
+```
+staging
+staging
+production
+staging
+production
+staging
+production
+staging
+```
+
+### 3. sed — find and replace
+```bash
+sed 's/staging/production/g' test-data/deploy_status.txt
+```
+*What it does:* `s/old/new/g` substitutes every occurrence of `staging` with `production`
+on each line (`g` = all matches, not just the first).
+
+Output:
+```
+app-gateway production PASS
+auth-service production FAIL
+payment-service production PASS
+user-service production PASS
+notification-service production FAIL
+search-service production PASS
+inventory-service production PASS
+reporting-service production FAIL
+```
+
+### 4. Chained pipe — grep then awk
+```bash
+grep 'FAIL' test-data/deploy_status.txt | awk '{print $1}'
+```
+*What it does:* filters down to only the failed deployments, then extracts just the
+service name (column 1) from those lines — a genuinely useful "which services failed"
+report.
+
+Output:
+```
+auth-service
+notification-service
+reporting-service
+```
+
+---
+
+## Repo layout
+```
+.
+├── .github/workflows/main.yml
+├── yaml/win/v1/(TestNG)Fixme.yaml
+├── src/test/java/Test1.java
+├── test-data/deploy_status.txt
+└── images/
+    ├── task1-dashboard.png
+    ├── task2-env-output.png
+    └── task3-retry.png
+```
