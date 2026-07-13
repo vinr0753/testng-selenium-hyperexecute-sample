@@ -5,6 +5,10 @@ runson: win
 autosplit: true
 concurrency: 1
 
+runtime:
+  language: java
+  version: 11
+
 env:
   TOKEN: anvdegtod-asdaasda0asda-asda
   ENVIRONMENT: staging
