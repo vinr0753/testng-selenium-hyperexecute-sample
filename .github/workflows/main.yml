@@ -41,36 +41,3 @@ jobs:
           echo $LT_ACCESS_KEY
           echo "Step 4: Executing the test"
           ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config "yaml/win/v1/(TestNG)Fixme.yaml"
-
-      - name: Task 4 - Parse HyperExecute job log
-        if: always()
-        shell: bash
-        working-directory: testng-selenium-hyperexecute-sample
-        run: |
-          LOGFILE=hyperexecute-cli.log
-          echo "Using log file: $LOGFILE"
-          echo ""
-
-          echo "--- grep: lines containing FAIL or ERROR ---"
-          grep -iE 'FAIL|ERROR' "$LOGFILE" || echo "No FAIL/ERROR lines found"
-          echo ""
-
-          echo "--- awk: second space-delimited column of each line ---"
-          awk '{print $2}' "$LOGFILE" | head -20
-          echo ""
-
-          echo "--- sed: find-and-replace demo (staging -> production) ---"
-          echo "Build environment: staging, target: staging-cluster" > staging_demo.txt
-          cat staging_demo.txt
-          sed 's/staging/production/g' staging_demo.txt
-          echo ""
-
-          echo "--- piped chain: grep ERROR lines, then awk extracts a field ---"
-          grep -i 'ERROR' "$LOGFILE" | awk '{print $2}' || echo "No ERROR lines found"
-
-      - name: Upload HyperExecute log as artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hyperexecute-cli-log
-          path: testng-selenium-hyperexecute-sample/hyperexecute-cli.log
