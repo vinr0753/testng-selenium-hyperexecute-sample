@@ -41,4 +41,4 @@ jobs:
           echo $LT_USERNAME
           echo $LT_ACCESS_KEY
           echo "Step 4: Executing the test"
-          ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config yaml/win/v2/testng_hyperexecute_autosplit_sample.yaml
+          ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config yaml/win/v1/(TestNG)Fixme.yaml
