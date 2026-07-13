@@ -41,3 +41,20 @@ jobs:
           echo $LT_ACCESS_KEY
           echo "Step 4: Executing the test"
           ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config "yaml/win/v1/(TestNG)Fixme.yaml"
+
+      - name: Task 4 - grep, awk, sed, and a chained pipe
+        if: always()
+        shell: bash
+        working-directory: testng-selenium-hyperexecute-sample
+        run: |
+          echo "--- grep: FAIL/ERROR lines from the real HyperExecute job log ---"
+          grep -iE 'FAIL|ERROR' hyperexecute-cli.log || echo "no matches found"
+
+          echo "--- awk: extract column 2 (environment) from deploy_status.txt ---"
+          awk '{print $2}' test-data/deploy_status.txt
+
+          echo "--- sed: replace staging with production in deploy_status.txt ---"
+          sed 's/staging/production/g' test-data/deploy_status.txt
+
+          echo "--- piped chain: grep FAIL lines, then awk extracts service name ---"
+          grep 'FAIL' test-data/deploy_status.txt | awk '{print $1}' || echo "no matches found"
