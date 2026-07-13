@@ -7,9 +7,12 @@ concurrency: 1
 
 env:
   TOKEN: anvdegtod-asdaasda0asda-asda
+  ENVIRONMENT: staging
 
 pre:
   - mvn -Dmaven.repo.local=./.m2 dependency:resolve
+  - echo "TOKEN=$TOKEN"
+  - echo "ENVIRONMENT=$ENVIRONMENT"
 
 testDiscovery:
   type: raw
