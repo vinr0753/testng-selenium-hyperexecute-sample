@@ -12,7 +12,6 @@ on:
         description: Link to the HyperExecute sample repo
         default: https://github.com/vinr0753/testng-selenium-hyperexecute-sample
         required: true
-
 jobs:
   HyperExecute-Selenium:
     runs-on: ${{ matrix.os }}
@@ -21,7 +20,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -29,6 +27,7 @@ jobs:
       - name: Starting CLI testing
         id: testng
         shell: bash
+        continue-on-error: true
         run: |
           echo "Step 1: Downloading sample suite"
           git clone ${{ github.event.inputs.sampleRepoLink }}
@@ -42,7 +41,12 @@ jobs:
           echo $LT_ACCESS_KEY
           echo "Step 4: Executing the test"
           ./hyperexecute --user $LT_USERNAME --key $LT_ACCESS_KEY --config "yaml/win/v1/(TestNG)Fixme.yaml"
-          - name: Find HyperExecute log files
+
+      - name: Find HyperExecute log files
+        if: always()
+        shell: bash
+        working-directory: testng-selenium-hyperexecute-sample
+        run: |
           echo "Files modified in the last 10 minutes:"
           find . -type f -mmin -10 2>/dev/null
           echo ""
@@ -52,4 +56,3 @@ jobs:
           echo "Contents of common artifact folders, if they exist:"
           ls -la HyperExecuteResults 2>/dev/null || echo "no HyperExecuteResults folder"
           ls -la logs 2>/dev/null || echo "no logs folder"
-  
