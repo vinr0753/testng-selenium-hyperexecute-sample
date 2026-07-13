@@ -1,0 +1,8 @@
+app-gateway staging PASS
+auth-service staging FAIL
+payment-service production PASS
+user-service staging PASS
+notification-service production FAIL
+search-service staging PASS
+inventory-service production PASS
+reporting-service staging FAIL
