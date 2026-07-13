@@ -11,8 +11,10 @@ env:
 
 pre:
   - mvn -Dmaven.repo.local=./.m2 dependency:resolve
-  - echo "TOKEN=$TOKEN"
-  - echo "ENVIRONMENT=$ENVIRONMENT"
+  - echo TOKEN=$TOKEN
+  - echo ENVIRONMENT=$ENVIRONMENT
+  - java -version
+  - javac -version
 
 testDiscovery:
   type: raw
