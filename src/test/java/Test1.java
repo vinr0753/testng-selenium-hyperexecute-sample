@@ -18,6 +18,7 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Parameters;
@@ -51,10 +52,10 @@ public class Test1 {
     public void testSetUp(String browser, String version, String platform, String resolution) throws Exception {
         String platformName = System.getenv("HYPEREXECUTE_PLATFORM") != null ? System.getenv("HYPEREXECUTE_PLATFORM")
                 : platform;
-        
+
         System.out.println("TOKEN=" + token);
         System.out.println("ENVIRONMENT=" + environment);
-        
+
         // LambdaTest specific options using W3C protocol (LT:Options)
         HashMap<String, Object> ltOptions = new HashMap<>();
         ltOptions.put("build", "[HyperExecute - 1] Demonstration of the TestNG Framework");
@@ -149,6 +150,15 @@ public class Test1 {
                 System.out.println("unmatched at " + expectedText + " " + actualText);
                 status = "failed";
             }
+
+            // Intentional hard failure for retryOnFailure testing (Task 3).
+            // Uses the test's own real computed values but forces a mismatch,
+            // so the failure is deterministic on every run, not dependent on
+            // actual app behavior.
+            Assert.assertEquals(actualText, expectedText + " (forced mismatch)",
+                    "Intentional failure for retry testing: expected [" + expectedText
+                            + " (forced mismatch)] but got [" + actualText + "]");
+
             Thread.sleep(500);
 
             String base64Screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BASE64);
