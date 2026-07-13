@@ -29,9 +29,6 @@ retryOnFailure: true
 maxRetries: 1
 
 post:
-  # grep - search the real HyperExecute CLI job log
-  - echo "--- grep FAIL/ERROR lines from hyperexecute-cli.log ---"
-  - grep -iE 'FAIL|ERROR' hyperexecute-cli.log
   # searches deploy_status.txt, space-delimited sample file
   - echo "--- awk extract column 2 from deploy_status.txt ---"
   - awk '{print $2}' test-data/deploy_status.txt
