@@ -13,43 +13,87 @@ fixed and the job was re-run.
 
 ### Issues found and why they broke the job
 
-- **`env: TOKEN: anvdegtod-asdaasda0asda-asda`** — invalid YAML. A nested key can't sit on
-  the same line as its parent. This threw a hard parse error
-  (`mapping values are not allowed here`) before the job could even start.
-  **Fix:** moved `TOKEN` onto its own indented line under `env:`.
+**1. `(TestNG)Fixme.yaml` config path had literal parentheses, referenced unquoted**
 
-- **`retryOnFailure: true` had a stray leading space** — every other top-level key sits at
-  column 0; this one had one space of indent. **Fix:** removed the leading space.
+The workflow step referenced the config path unquoted in the `--config` flag:
+```bash
+--config yaml/win/v1/(TestNG)Fixme.yaml
+```
+In bash, `(` opens a subshell — unquoted, this is a shell metacharacter, not just a
+filename character, and threw `syntax error near unexpected token '('`.
 
-- **`conCurrency: 1`** (typo'd casing) — HyperExecute's schema expects `concurrency`
-  (lowercase). Because the key didn't match, it was silently ignored, and since
-  `autosplit: true` requires `concurrency` to be defined, the job failed validation with
-  `Invalid yaml content: Concurrency is required in autosplit mode`.
-  **Fix:** corrected to `concurrency: 1`.
+**Fix:** quoted the path:
+```bash
+--config "yaml/win/v1/(TestNG)Fixme.yaml"
+```
 
-- **`(TestNG)Fixme.yaml` config path had literal parentheses**, and the workflow step
-  referenced it *unquoted* in the `--config` flag:
-  ```bash
-  --config yaml/win/v1/(TestNG)Fixme.yaml
-  ```
-  In bash, `(` opens a subshell — unquoted, this is a shell metacharacter, not just a
-  filename character, and threw `syntax error near unexpected token '('`.
-  **Fix:** quoted the path: `--config "yaml/win/v1/(TestNG)Fixme.yaml"`.
+*Evidence:* [Job run #29252461233](https://github.com/vinr0753/testng-selenium-hyperexecute-sample/actions/runs/29252461233/job/86824136153)
 
-- **JDK mismatch** — `pom.xml` sets `maven.compiler.target: 11`, but the machine actually
-  compiling had JDK 8 installed (`openjdk version "1.8.0_442"`), giving
-  `Fatal error compiling: invalid target release: 11`.
-  **Fix:** added a `runtime:` block to the YAML so HyperExecute provisions JDK 11 on its
-  own VM for the test-execution stage:
-  ```yaml
-  runtime:
-    language: java
-    version: 11
-  ```
+---
 
-### Evidence
-- Job link: `https://hyperexecute.lambdatest.com/hyperexecute/task?jobId=<job-id>`
-- ![Job running successfully on the dashboard](./images/task1-dashboard.png)
+**2. Workflow cloned the wrong repo**
+
+`main.yml`'s `sampleRepoLink` input defaulted to
+`https://github.com/LambdaTest/testng-selenium-hyperexecute-sample` (the original,
+unmodified upstream repo), not this fork. Since `Starting CLI testing` does
+`git clone ${{ github.event.inputs.sampleRepoLink }}`, any run using that default would
+clone LambdaTest's pristine sample instead of this repo — meaning none of the YAML fixes,
+`Test1.java` changes, or `test-data/deploy_status.txt` would actually be present, and the
+job would silently be testing someone else's unmodified code instead of this submission.
+
+**Fix:** changed the default to
+`https://github.com/vinr0753/testng-selenium-hyperexecute-sample` (this fork).
+
+*Evidence:* [Job run #29253004319](https://github.com/vinr0753/testng-selenium-hyperexecute-sample/actions/runs/29253004319/job/86825867678)
+
+---
+
+**3. `retryOnFailure: true` had a stray leading space**
+
+Every other top-level key sits at column 0; this one had one space of indent, which broke
+the YAML mapping structure.
+
+**Fix:** removed the leading space.
+
+---
+
+**4. `conCurrency: 1` (typo'd casing)**
+
+HyperExecute's schema expects `concurrency` (lowercase). Because the key didn't match, it
+was silently ignored, and since `autosplit: true` requires `concurrency` to be defined, the
+job failed validation with:
+```
+Invalid yaml content: Concurrency is required in autosplit mode
+```
+
+**Fix:** corrected to `concurrency: 1`.
+
+*Evidence:*
+
+![Comparison with sample YAML](./images/Screenshot%202026-07-13%20183935.png)
+
+---
+
+**5. JDK mismatch**
+
+`pom.xml` sets `maven.compiler.target: 11`, but the machine actually compiling had JDK 8
+installed (`openjdk version "1.8.0_442"`), giving:
+```
+Fatal error compiling: invalid target release: 11
+```
+
+**Fix:** added a `runtime:` block to the YAML so HyperExecute provisions JDK 11 on its own
+VM for the test-execution stage:
+```yaml
+runtime:
+  language: java
+  version: 11
+```
+
+*Evidence:*
+- [HyperExecute job log (pre-run stage)](https://hyperexecute.lambdatest.com/hyperexecute/task?activeGraph=&isArtifactOpen=&jobId=412660f7-6d78-44b4-b1ef-f25222820899&link=pre.log&logType=prerun&order=1&previousLogType=&scenario_search_text=&stageId=827865ee-3125-4e28-aede-2b3c2a0529ed&tab=&taskId=HYPW-3223818-1783950821453358601XBH&taskStatus=&viewBy=)
+
+![Check for Java version](./images/Screenshot%202026-07-13%20225152.png)
 
 ---
 
@@ -70,36 +114,48 @@ pre:
 confirmed by testing. `$TOKEN` (bash-style) silently resolved to nothing; `%TOKEN%`
 (`cmd.exe`-style) worked correctly and printed the real value.
 
+*Evidence:*
+- `pre` step log output:
+  ```
+  TOKEN=anvdegtod-asdaasda0asda-asda
+  ENVIRONMENT=staging
+  ```
+- [HyperExecute job log (setup-runtime stage)](https://hyperexecute.lambdatest.com/hyperexecute/task?activeGraph=&isArtifactOpen=&jobId=607e6f32-0766-4535-8e1e-89b9db712ca4&link=setup-runtime.log&logType=setup-runtime&order=1&previousLogType=&scenario_search_text=&stageId=8ea646e5-9ef4-4520-910d-71744efc361b&tab=&taskId=HYPW-3223818-1783952224044930826VBM&taskStatus=&viewBy=)
+
+![Debug output](./images/Screenshot%202026-07-13%20225311.png)
+
+---
+
 ### Reading the variable in test code
+
 `src/test/java/Test1.java`:
 ```java
 public static String token = System.getenv("TOKEN");
 public static String environment = System.getenv("ENVIRONMENT");
 ```
+
 Printed inside `@BeforeMethod`:
 ```java
 System.out.println("TOKEN=" + token);
 System.out.println("ENVIRONMENT=" + environment);
 ```
 
-### Evidence
-- `pre` step log output:
-  ```
-  TOKEN=anvdegtod-asdaasda0asda-asda
-  ENVIRONMENT=staging
-  ```
+*Evidence:*
 - Test execution console output:
   ```
   TOKEN=anvdegtod-asdaasda0asda-asda
   ENVIRONMENT=staging
   ```
-- ![Env values printed in pre step and test output](./images/task2-env-output.png)
+- [HyperExecute job log (setup-runtime stage)](https://hyperexecute.lambdatest.com/hyperexecute/task?activeGraph=&isArtifactOpen=&jobId=607e6f32-0766-4535-8e1e-89b9db712ca4&link=setup-runtime.log&logType=setup-runtime&order=1&previousLogType=&scenario_search_text=&stageId=8ea646e5-9ef4-4520-910d-71744efc361b&tab=&taskId=HYPW-3223818-1783952224044930826VBM&taskStatus=&viewBy=)
+
+![Env values printed in test output](./images/Screenshot%202026-07-13%20230849.png)
 
 ---
 
 ## Task 3: Force a failure and configure retries
 
 ### The intentional failure
+
 `src/test/java/Test1.java`, inside `test1_element_addition_1`, using the test's own
 already-computed values so the failure reads as a genuine check rather than an arbitrary
 `1 == 2`:
@@ -120,6 +176,7 @@ maxRetries: 1
 ```
 
 ### Evidence
+
 Job log shows the test failing, then retrying, then failing again on the retry (this
 particular assertion is designed to always fail, so the *retry firing* is the thing being
 verified — not the test ultimately passing):
@@ -136,7 +193,9 @@ x [1]  {retry 1} "Test_1" (58s)
 status shows `FAILED` because this test is designed to always fail — that's expected and
 intentional for this task, not a regression elsewhere in the suite.
 
-- ![Retry evidence from job log](./images/task3-retry.png)
+- [HyperExecute job log (retry scenario)](https://hyperexecute.lambdatest.com/hyperexecute/task?activeGraph=&isArtifactOpen=&jobId=0143d175-03a3-46c0-befe-61725638eec5&link=command.1.1.log&logType=scenario&order=4&previousLogType=&scenario_search_text=&stageId=4a6ec3c7-443c-49fc-a673-dd9178fb6017&tab=&taskId=HYPW-3223818-1783952908135368257MBD&taskStatus=&viewBy=)
+
+![Retry evidence from job log](./images/Screenshot%202026-07-13%20231135.png)
 
 ---
 
@@ -162,6 +221,7 @@ Sample output (from the actual job log):
 ```
 
 ### 2. awk — extract column 2
+
 `test-data/deploy_status.txt`:
 ```
 app-gateway staging PASS
@@ -226,6 +286,22 @@ notification-service
 reporting-service
 ```
 
+### A note on why two different files were used
+
+An earlier attempt ran `awk '{print $2}'` directly against `hyperexecute-cli.log` itself.
+That log turned out to be **structured JSON, one object per line**
+(`{"level":"error","time":"...","msg":"..."}`), not genuinely space-delimited data — so
+"column 2" didn't correspond to a consistent field, and the output was effectively
+meaningless (`error`, `application` — arbitrary words, not real fields). `awk`'s
+column-position logic only produces something useful when the input has a stable, uniform
+field layout on every line. `deploy_status.txt` was created specifically to give `awk` and
+`sed` real, consistent structure to work with; `grep`, by contrast, doesn't care about
+structure at all and works correctly against the raw JSON log as-is.
+
+### Evidence
+
+[Workflow run #29265796739](https://github.com/vinr0753/testng-selenium-hyperexecute-sample/actions/runs/29265796739/job/86870521243)
+
 ---
 
 ## Repo layout
@@ -236,7 +312,9 @@ reporting-service
 ├── src/test/java/Test1.java
 ├── test-data/deploy_status.txt
 └── images/
-    ├── task1-dashboard.png
-    ├── task2-env-output.png
-    └── task3-retry.png
+    ├── Screenshot 2026-07-13 183935.png
+    ├── Screenshot 2026-07-13 225152.png
+    ├── Screenshot 2026-07-13 225311.png
+    ├── Screenshot 2026-07-13 230849.png
+    └── Screenshot 2026-07-13 231135.png
 ```
