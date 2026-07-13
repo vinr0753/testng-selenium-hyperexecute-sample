@@ -5,7 +5,8 @@ runson: win
 autosplit: true
 concurrency: 1
 
-env: TOKEN: anvdegtod-asdaasda0asda-asda
+env:
+  TOKEN: anvdegtod-asdaasda0asda-asda
 
 pre:
   - mvn -Dmaven.repo.local=./.m2 dependency:resolve
