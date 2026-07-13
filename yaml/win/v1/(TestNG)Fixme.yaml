@@ -15,12 +15,8 @@ env:
 
 pre:
   - mvn -Dmaven.repo.local=./.m2 dependency:resolve
-  - echo TOKEN=$TOKEN
-  - echo ENVIRONMENT=$ENVIRONMENT
-  - echo "Environment is $ENVIRONMENT and token starts with $TOKEN"
-  - env | grep -E 'TOKEN|ENVIRONMENT'
-  - java -version
-  - javac -version
+  - echo TOKEN=%TOKEN%
+  - echo ENVIRONMENT=%ENVIRONMENT%
 
 testDiscovery:
   type: raw
