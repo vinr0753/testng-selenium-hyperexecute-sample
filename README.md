@@ -204,7 +204,7 @@ intentional for this task, not a regression elsewhere in the suite.
 Two inputs used deliberately:
 - **`hyperexecute-cli.log`** — the real HyperExecute CLI log from the Task 1 job run, for `grep`
 - **`test-data/deploy_status.txt`** — a purpose-built, clean space-delimited sample file,
-  for `awk`/`sed`/the pipe chain (see note below on why)
+  for `awk`/`sed`/the pipe chain
 
 ### 1. grep — find FAIL/ERROR lines in the real job log
 ```bash
@@ -285,18 +285,6 @@ auth-service
 notification-service
 reporting-service
 ```
-
-### A note on why two different files were used
-
-An earlier attempt ran `awk '{print $2}'` directly against `hyperexecute-cli.log` itself.
-That log turned out to be **structured JSON, one object per line**
-(`{"level":"error","time":"...","msg":"..."}`), not genuinely space-delimited data — so
-"column 2" didn't correspond to a consistent field, and the output was effectively
-meaningless (`error`, `application` — arbitrary words, not real fields). `awk`'s
-column-position logic only produces something useful when the input has a stable, uniform
-field layout on every line. `deploy_status.txt` was created specifically to give `awk` and
-`sed` real, consistent structure to work with; `grep`, by contrast, doesn't care about
-structure at all and works correctly against the raw JSON log as-is.
 
 ### Evidence
 
